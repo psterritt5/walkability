@@ -5,7 +5,7 @@ walkability was created to help users navigate the stresses of moving to a new l
 
 ## Steps to run
 1. If you do not already have a google developer account, you will need to create one [here](https://developers.google.com/).
-2. [From here]((https://developers.google.com/)), create a new project on and enable the places API.
+2. [From the google developers page]((https://developers.google.com/)), create a new project and enable the places API.
 3. Next grab your API Key and paste it into 'MAPS_API.txt' 
 4. Compile program and run in command line or browser.
 5. To run in browser: run 'app.py' and follow link in command line to run on local device.
