@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %} Result {% endblock %}
+{% block content %}
+  <div class="content-container">
+    <h2  >Result for {{ coordinates }}:</h2>
+      <p> {{ result }}</p>
+  </div>
+<div>
+    <p> Use the 'Home' link at the top of the page to make another search</p>
+</div>
+{% endblock%}
