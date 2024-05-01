@@ -3,6 +3,11 @@ Walkable cities offer a multitude of benefits for both individuals and communiti
 
 walkability was created to help users navigate the stresses of moving to a new location. Users may enter the gps coordinates of a potential new apartment or home and will be delivered a walkability score to help them through their decision-making process!
 
+## Design
+Utilizes a 3-tier archictecture with the code split into the following packages: ui, datamanagement and processor.
+
+Fetches data from googlemaps api & evaluates the walkability of a location based on the location's proximity to amenities.
+
 ## Steps to run
 1. If you do not already have a google developer account, you will need to create one [here](https://developers.google.com/).
 2. [From the google developers page]((https://developers.google.com/)), create a new project and enable the places API.
