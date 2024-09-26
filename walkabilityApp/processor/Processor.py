@@ -14,7 +14,7 @@ class Processor:
         # Get data for specified loc w/ DataFetcher instance
         self.dict_results = self.data_fetcher.perform_search()
         # compute walkability score
-        score = self.calculate_walkability_score(dict_results=dict_results)
+        score = self.calculate_walkability_score()
         # return interpreted score
         return self.interpret_score(walkability_score=score)
     '''
