@@ -1,12 +1,20 @@
+**Please refer to 'convert-to-react' branch for most upto date code**
+
 # Walkability Navigator
 Walkable cities offer a multitude of benefits for both individuals and communities. By fostering a pedestrian-friendly environment, these cities contribute to various aspects of well-being, including physical and mental health, environmental sustainability, economic prosperity, social interaction, and safety. The emphasis on walkability enhances the overall quality of life for residents, creating a cohesive and thriving community.
 
 Walkability Navigator was created to help users navigate the stresses of moving to a new location. Users may enter the gps coordinates of a potential new apartment or home and will be delivered a walkability score to help them through their decision-making process. Additionally users may create an account and save their favorite options in a dashboard.
 
 ## Design
-Utilizes a 3-tier archictecture with the code split into the following packages: ui, datamanagement and processor.
+**New Design:** Implements a client-server architecture. The client is built with JavaScript/React.js and utilizes the Material UI library for the reuse of open-source components. The server, written in Python using Flask, manages data fetching from the Google Maps API and evaluates walkability through separate data management and processor packages. User account data is stored in a MongoDB database, chosen for its flexible schema that allows easy feature additions and user information storage.
+
+Tech Stack: MongoDB, Flask, React
+
+**Old Design:** Utilizes a 3-tier archictecture with the code split into the following packages: ui, datamanagement and processor.
 
 Fetches data from googlemaps api & evaluates the walkability of a location based on the location's proximity to amenities.
+
+Tech Stack: MongoDB, Flask
 
 ## Images of Site
 ### Homepage
