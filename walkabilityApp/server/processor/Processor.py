@@ -1,4 +1,4 @@
-from walkabilityApp.datamanagement.DataFetcher import DataFetcher
+from datamanagement.DataFetcher import DataFetcher
 class Processor:
     # Constructor
     def __init__(self, gps_coordinates):
