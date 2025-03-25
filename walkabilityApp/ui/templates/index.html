@@ -1,15 +1,122 @@
 {% extends "base.html" %}
-{% block title %} Homepage {% endblock %}
+
 {% block content %}
-<div>
+<div class="hero-image">
     <img src="https://images.adsttc.com/media/images/5ffe/8b53/63c0/174c/f800/00f1/newsletter/paris_en_commun.jpg?1610517326" class="img-fluid">
 </div>
-<div class = "centered">
-    <form action="{{ url_for('result') }}" method="post">
-      <h2>Enter the gps coordinates of the location you would like to check:</h2>
-      <input type="text" class="name-input name mb-3" id="coordinates", name = "coordinates">
-      <input class="btn btn-outline-primary" type="submit" value="Submit">
-    </form>
-  </div>
 
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <form method="POST" action="{{ url_for('home') }}" class="form-group">
+                <div class="form-group">
+                    <label for="address">Enter Address:</label>
+                    <input type="text" class="form-control" id="address" name="address" placeholder="Enter a full address (e.g., 123 Main St, City, State)" required>
+                    <div id="address-suggestions" class="list-group mt-2" style="display: none;"></div>
+                </div>
+                <button type="submit" class="btn btn-primary mt-3">Check Walkability</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.hero-image {
+    width: 100%;
+    height: 400px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+    position: relative;
+}
+
+.hero-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
+#address-suggestions {
+    position: absolute;
+    z-index: 1000;
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#address-suggestions .list-group-item {
+    cursor: pointer;
+}
+
+#address-suggestions .list-group-item:hover {
+    background-color: #f8f9fa;
+}
+</style>
+
+<script>
+let autocompleteService;
+let placesService;
+let map;
+
+function initAutocomplete() {
+    const input = document.getElementById('address');
+    const suggestionsDiv = document.getElementById('address-suggestions');
+    
+    // Initialize the Google Maps services
+    autocompleteService = new google.maps.places.AutocompleteService();
+    placesService = new google.maps.places.PlacesService(document.createElement('div'));
+    
+    input.addEventListener('input', function() {
+        const query = this.value;
+        if (query.length < 3) {
+            suggestionsDiv.style.display = 'none';
+            return;
+        }
+        
+        autocompleteService.getPlacePredictions({
+            input: query,
+            types: ['address']
+        }, function(predictions, status) {
+            if (status === google.maps.places.PlacesServiceStatus.OK) {
+                suggestionsDiv.innerHTML = '';
+                predictions.forEach(prediction => {
+                    const div = document.createElement('div');
+                    div.className = 'list-group-item';
+                    div.textContent = prediction.description;
+                    div.addEventListener('click', () => {
+                        input.value = prediction.description;
+                        suggestionsDiv.style.display = 'none';
+                    });
+                    suggestionsDiv.appendChild(div);
+                });
+                suggestionsDiv.style.display = 'block';
+            } else {
+                suggestionsDiv.style.display = 'none';
+            }
+        });
+    });
+    
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+            suggestionsDiv.style.display = 'none';
+        }
+    });
+}
+
+// Load Google Maps API
+function loadGoogleMapsAPI() {
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key={{ config.GOOGLE_MAPS_API_KEY }}&libraries=places&callback=initAutocomplete`;
+    script.async = true;
+    document.head.appendChild(script);
+}
+
+// Start loading the API when the page loads
+window.addEventListener('load', loadGoogleMapsAPI);
+</script>
 {% endblock %}

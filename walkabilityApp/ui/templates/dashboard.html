@@ -1,49 +1,51 @@
 {% extends "base.html" %}
-{% block title %}Dashboard{% endblock %}
+
 {% block content %}
-  <div class="content-container">
-    <h2>Welcome {{ session['user'] }}!</h2>
-    <p>This is your dashboard where you can see your favorite locations and walkability scores.</p>
-
-    <h3>Your Favorite Locations:</h3>
-    {% if favorites %}
-      <ul style="list-style-type: none;">
-        {% for favorite in favorites %}
-          <li style="position: relative; padding: 15px; border: 1px solid #ccc; margin-bottom: 10px;">
-            <!-- X Button to Remove Favorite (Upper Right Corner) -->
-            <form method="POST" action="{{ url_for('remove_favorite') }}" style="position: absolute; top: 5px; right: 10px;">
-              <input type="hidden" name="coordinates" value="{{ favorite.coordinates }}">
-              <button type="submit" class="remove-btn">X</button>
-            </form>
-
-            <strong>Address:</strong> {{ favorite.address }}<br>
-            <strong>Coordinates:</strong> {{ favorite.coordinates }}<br>
-            <strong>Rental Cost:</strong> ${{ favorite.rental_cost }}<br>
-            <strong>Walkability Score:</strong> {{ favorite.walkability_score }}<br>
-            <strong>Notes:</strong> {{ favorite.notes }}<br>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p>You have no favorite locations yet.</p>
-    {% endif %}
-
-    <div>
-      <a href="{{ url_for('logout') }}">Logout</a>
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Welcome, {{ username }}!</h1>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Your Favorite Locations</h2>
+            {% if favorites %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Address</th>
+                            <th>Walkability Score</th>
+                            <th>Monthly Rent</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for favorite in favorites %}
+                        <tr>
+                            <td>{{ favorite.address }}</td>
+                            <td>{{ favorite.walkability_score }}</td>
+                            <td>${{ favorite.rental_cost if favorite.rental_cost else 'N/A' }}</td>
+                            <td>{{ favorite.notes if favorite.notes else 'No notes' }}</td>
+                            <td>
+                                <form action="{{ url_for('remove_favorite') }}" method="post" style="display: inline;">
+                                    <input type="hidden" name="address" value="{{ favorite.address }}">
+                                    <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="alert alert-info">You haven't saved any favorite locations yet. Try searching for a location to add it to your favorites!</p>
+            {% endif %}
+            
+            <div class="mt-4">
+                <a href="{{ url_for('home') }}" class="btn btn-primary">Search New Location</a>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+            </div>
+        </div>
     </div>
-  </div>
-
-  <style>
-    .remove-btn {
-      background-color: transparent;
-      color: #333;
-      border: none;
-      font-size: 16px;
-      cursor: pointer;
-      padding: 0;
-    }
-    .remove-btn:hover {
-      color: #e74c3c; /* Red color on hover */
-    }
-  </style>
+</div>
 {% endblock %}

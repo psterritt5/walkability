@@ -1,42 +1,265 @@
 {% extends "base.html" %}
-{% block title %} Result {% endblock %}
+
 {% block content %}
-  <div class="content-container">
-    <h2>Result for {{ coordinates }}:</h2>
-    <p>{{ result }}</p>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2 class="card-title">Walkability Results for:</h2>
+                    <p class="lead">{{ address }}</p>
+                    <div class="score-section">
+                        <h3>Score: <span class="badge bg-primary">{{ score }}/10</span></h3>
+                        <p class="interpretation">{{ interpretation }}</p>
+                    </div>
+                </div>
+            </div>
 
-    <button id="favorite-btn" onclick="document.getElementById('favorite-modal').style.display='block'">Favorite Location</button>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h3 class="card-title">Category Summary</h3>
+                    <div class="row">
+                        {% for category in categories %}
+                        <div class="col-md-6 mb-3">
+                            <div class="category-count">
+                                <i class="fas {{ category.icon }}"></i>
+                                <h4>{{ category.name }}</h4>
+                                <span class="badge bg-secondary">{{ category.count }} places</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
 
-    <!-- Modal for adding favorite -->
-    <div id="favorite-modal" style="display:none;">
-      <div class="modal-content">
-        <span onclick="document.getElementById('favorite-modal').style.display='none'" class="close">&times;</span>
-        <h3>Add Favorite Location</h3>
-        <form method="POST" action="{{ url_for('add_favorite') }}">
-          <input type="hidden" name="coordinates" value="{{ coordinates }}">
-          <label for="address">Address:</label>
-          <input type="text" name="address" required>
-          <label for="rental_cost">Rental Cost:</label>
-          <input type="number" name="rental_cost" required>
-          <label for="notes">Notes:</label>
-          <textarea name="notes"></textarea>
-          <button type="submit">Save Favorite</button>
-        </form>
-      </div>
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="card-title">Detailed Results</h3>
+                    <div class="accordion" id="resultsAccordion">
+                        {% for category in categories %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading{{ loop.index }}">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                        data-bs-target="#collapse{{ loop.index }}" aria-expanded="false" 
+                                        aria-controls="collapse{{ loop.index }}">
+                                    <i class="fas {{ category.icon }} me-2"></i>
+                                    {{ category.name }} ({{ category.count }})
+                                </button>
+                            </h2>
+                            <div id="collapse{{ loop.index }}" class="accordion-collapse collapse" 
+                                 aria-labelledby="heading{{ loop.index }}" data-bs-parent="#resultsAccordion">
+                                <div class="accordion-body">
+                                    {% if category.places %}
+                                    <ul class="list-group">
+                                        {% for place in category.places %}
+                                        <li class="list-group-item">{{ place }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% else %}
+                                    <p class="text-muted">No places found in this category</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="card-title">Location Map</h3>
+                    <div id="map-container">
+                        <div id="map"></div>
+                    </div>
+                    <div id="map-legend" class="mt-3">
+                        <h5>Map Legend</h5>
+                        <div class="legend-items">
+                            <div class="legend-item">
+                                <img src="http://maps.google.com/mapfiles/ms/icons/blue-dot.png" alt="Blue marker">
+                                <span>Searched Location</span>
+                            </div>
+                            {% for category in categories %}
+                            <div class="legend-item">
+                                <img src="{{ category.marker_icon }}" alt="{{ category.name }} marker">
+                                <span>{{ category.name }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
+</div>
 
-  <div>
-    <p>Use the 'Home' link at the top of the page to make another search</p>
-  </div>
+<style>
+.category-count {
+    text-align: center;
+    padding: 15px;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+}
+.category-count i {
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: #0d6efd;
+}
+.category-count h4 {
+    margin: 10px 0;
+    font-size: 1.1rem;
+}
+.score-section {
+    text-align: center;
+    margin: 20px 0;
+}
+.interpretation {
+    margin-top: 15px;
+    font-style: italic;
+}
+#map-container {
+    position: relative;
+    height: 500px;
+    width: 100%;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+#map {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+}
+#map-legend {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+}
+.legend-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.legend-item img {
+    width: 20px;
+    height: 20px;
+}
+.legend-item span {
+    font-size: 0.9rem;
+}
+</style>
 
-  <script>
-    // Close the modal when clicking outside of it
-    window.onclick = function(event) {
-      const modal = document.getElementById('favorite-modal');
-      if (event.target == modal) {
-        modal.style.display = "none";
-      }
+<script>
+// Store coordinates and places data from Jinja in global variables
+const locationData = {
+    lat: {{ lat }},
+    lng: {{ lng }},
+    address: "{{ address|safe }}",
+    places: [
+        {% for category in categories %}
+            {% for place in category.places_with_coords %}
+                {% if place.lat and place.lng %}
+                {
+                    name: "{{ place.name|safe }}",
+                    lat: {{ place.lat }},
+                    lng: {{ place.lng }},
+                    category: "{{ category.name|safe }}",
+                    icon: "{{ category.marker_icon }}"
+                },
+                {% endif %}
+            {% endfor %}
+        {% endfor %}
+    ]
+};
+
+// Initialize map
+function initMap() {
+    console.log('Initializing map...', locationData);
+    
+    // Check if map container exists
+    const mapDiv = document.getElementById('map');
+    if (!mapDiv) {
+        console.error('Map container not found');
+        return;
     }
-  </script>
+
+    try {
+        // Initialize the map
+        const map = new google.maps.Map(mapDiv, {
+            zoom: 15,
+            center: { lat: locationData.lat, lng: locationData.lng },
+            mapTypeControl: true,
+            streetViewControl: true,
+            fullscreenControl: true
+        });
+
+        console.log('Map initialized successfully');
+
+        // Add marker for searched location
+        const searchedLocationMarker = new google.maps.Marker({
+            position: { lat: locationData.lat, lng: locationData.lng },
+            map: map,
+            icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+            title: 'Searched Location',
+            zIndex: 1000
+        });
+
+        const searchedLocationInfo = new google.maps.InfoWindow({
+            content: `<div style="padding: 5px;"><strong>Searched Location</strong><br>${locationData.address}</div>`
+        });
+
+        searchedLocationMarker.addListener('mouseover', () => {
+            searchedLocationInfo.open(map, searchedLocationMarker);
+        });
+
+        searchedLocationMarker.addListener('mouseout', () => {
+            searchedLocationInfo.close();
+        });
+
+        // Add markers for all places
+        locationData.places.forEach(place => {
+            const marker = new google.maps.Marker({
+                position: { lat: place.lat, lng: place.lng },
+                map: map,
+                icon: place.icon,
+                title: place.name,
+                zIndex: 1
+            });
+
+            const infoWindow = new google.maps.InfoWindow({
+                content: `<div style="padding: 5px;"><strong>${place.name}</strong><br>${place.category}</div>`
+            });
+
+            marker.addListener('mouseover', () => {
+                infoWindow.open(map, marker);
+            });
+
+            marker.addListener('mouseout', () => {
+                infoWindow.close();
+            });
+        });
+
+    } catch (error) {
+        console.error('Error initializing map:', error);
+        mapDiv.innerHTML = '<div class="alert alert-danger">Error: Failed to initialize map</div>';
+    }
+}
+
+// Ensure the map container is ready before loading the API
+document.addEventListener('DOMContentLoaded', () => {
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap`;
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+});
+</script>
 {% endblock %}

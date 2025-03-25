@@ -1,10 +1,24 @@
 from flask import Flask, request, render_template, redirect, url_for, session, flash
 from flask_pymongo import PyMongo
 from flask_bcrypt import Bcrypt
-from walkabilityApp.processor.Processor import Processor
+from processor.Processor import Processor
+import os
+import json
 
 app = Flask(__name__, template_folder="ui/templates")
-app.secret_key = open('SECRET_KEY.txt', 'r').read()
+
+# Load API keys
+def load_api_keys():
+    keys = {}
+    with open(os.path.join(os.path.dirname(__file__), 'api_keys.txt'), 'r') as f:
+        for line in f:
+            if line.strip() and not line.startswith('#'):
+                key, value = line.strip().split('=')
+                keys[key] = value
+    return keys
+
+api_keys = load_api_keys()
+app.secret_key = api_keys['FLASK_SECRET_KEY']
 
 # MongoDB instance
 app.config["MONGO_URI"] = "mongodb://localhost:27017/walkability"
@@ -12,29 +26,113 @@ mongo = PyMongo(app)
 bcrypt = Bcrypt(app)
 users_collection = mongo.db.users
 
+# Store Google Maps API key in app config
+app.config['GOOGLE_MAPS_API_KEY'] = api_keys['GOOGLE_MAPS_API_KEY']
+
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
     if request.method == 'POST':
-        coordinates = request.form["coordinates"]
-        return redirect(url_for('result', name=coordinates))
+        address = request.form["address"]
+        return redirect(url_for('result', address=address))
     return render_template('index.html')
 
 
 @app.route("/result", methods=['GET', 'POST'])
 def result():
-    coordinates = request.form.get('coordinates')
+    address = request.args.get('address') or request.form.get('address')
+    if not address:
+        flash("Please enter an address")
+        return redirect(url_for('home'))
+    
     try:
-        result = obtain_result(coordinates)
-    except:
-        result = "Invalid coordinates. Try again by returning to the home page."
-    return render_template("result.html", result=result,
-                           coordinates=coordinates)
+        # Initialize processor and get results
+        processor = Processor(address)
+        score, interpretation = processor.process_location(address)
+        
+        # Get the GPS coordinates for the map
+        data_fetcher = processor.data_fetcher
+        if not data_fetcher or not data_fetcher.gps_coordinates:
+            flash("Could not find the specified address. Please try a different address.")
+            return redirect(url_for('home'))
+            
+        lat, lng = data_fetcher.gps_coordinates
+        print(f"Processing address: {address}, coordinates: ({lat}, {lng})")
 
+        # Prepare category data with icons and place details
+        categories = []
+        category_icons = {
+            'grocery': 'fa-shopping-cart',
+            'eat_out': 'fa-utensils',
+            'public_transit': 'fa-bus',
+            'health_and_well_being': 'fa-heartbeat'
+        }
+        
+        category_markers = {
+            'grocery': 'http://maps.google.com/mapfiles/ms/icons/green-dot.png',
+            'eat_out': 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png',
+            'public_transit': 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
+            'health_and_well_being': 'http://maps.google.com/mapfiles/ms/icons/purple-dot.png'
+        }
 
-def obtain_result(coordinates):
-    processor = Processor(gps_coordinates=coordinates)
-    return processor.process_location()
+        places_by_category = data_fetcher.get_places_by_category()
+        print(f"Found places by category: {places_by_category}")
+        
+        for category_name in data_fetcher.CATEGORY_NAMES:
+            places = places_by_category.get(category_name, set())
+            places_with_coords = []
+            
+            # Get coordinates for each place
+            for place_name in places:
+                place_id = None
+                for pid, details in data_fetcher.place_details.items():
+                    if details['name'] == place_name:
+                        place_id = pid
+                        break
+                
+                if place_id and place_id in data_fetcher.place_details:
+                    place_details = data_fetcher.place_details[place_id]
+                    location = place_details.get('location', {})
+                    if location and 'lat' in location and 'lng' in location:
+                        places_with_coords.append({
+                            'name': place_name,
+                            'lat': location['lat'],
+                            'lng': location['lng']
+                        })
+            
+            categories.append({
+                'name': category_name.replace('_', ' ').title(),
+                'count': len(places),
+                'places': sorted(places),
+                'places_with_coords': places_with_coords,
+                'icon': category_icons.get(category_name, 'fa-map-marker'),
+                'marker_icon': category_markers.get(category_name)
+            })
+
+        # Check if we have a valid API key
+        api_key = app.config.get('GOOGLE_MAPS_API_KEY')
+        if not api_key:
+            flash("Google Maps API key is not configured. Map functionality will be limited.")
+            print("Warning: No Google Maps API key found")
+        else:
+            print("Using Google Maps API key:", api_key[:10] + "...")
+            
+        return render_template(
+            "result.html",
+            address=address,
+            score=score,
+            interpretation=interpretation.split('\n\n')[0],  # Just the score interpretation
+            categories=categories,
+            lat=lat,
+            lng=lng,
+            google_maps_api_key=app.config['GOOGLE_MAPS_API_KEY']  # Pass the API key directly
+        )
+    except Exception as e:
+        print(f"Error processing request: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        flash("Error processing address. Please try a different address.")
+        return redirect(url_for('home'))
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -106,29 +204,33 @@ def add_favorite():
     if 'user' in session:
         user = users_collection.find_one({'username': session['user']})
         if user:
-            coordinates = request.form['coordinates']
             address = request.form['address']
             rental_cost = request.form['rental_cost']
             notes = request.form['notes']
-            walkability_score = obtain_result(
-                coordinates)  # Assuming this returns the score
+            
+            try:
+                processor = Processor(address)
+                score, interpretation = processor.process_location(address)
+                
+                # Prepare favorite location data
+                favorite_data = {
+                    'address': address,
+                    'rental_cost': rental_cost,
+                    'notes': notes,
+                    'walkability_score': score,
+                    'walkability_details': interpretation
+                }
 
-            # Prepare favorite location data
-            favorite_data = {
-                'coordinates': coordinates,
-                'address': address,
-                'rental_cost': rental_cost,
-                'notes': notes,
-                'walkability_score': walkability_score
-            }
+                # Append to the user's favorites in MongoDB
+                users_collection.update_one(
+                    {'username': session['user']},
+                    {'$push': {'favorites': favorite_data}}
+                )
 
-            # Append to the user's favorites in MongoDB
-            users_collection.update_one(
-                {'username': session['user']},
-                {'$push': {'favorites': favorite_data}}
-            )
-
-            flash('Location added to favorites successfully!')
+                flash('Location added to favorites successfully!')
+            except Exception as e:
+                flash('Error processing address. Please try again.')
+                
         return redirect(url_for('dashboard'))
     else:
         flash('Please log in to save favorites.')
@@ -140,12 +242,12 @@ def remove_favorite():
     if 'user' in session:
         user = users_collection.find_one({'username': session['user']})
         if user:
-            coordinates = request.form['coordinates']
+            address = request.form['address']
 
-            # Remove the favorite with the matching coordinates
+            # Remove the favorite with the matching address
             users_collection.update_one(
                 {'username': session['user']},
-                {'$pull': {'favorites': {'coordinates': coordinates}}}
+                {'$pull': {'favorites': {'address': address}}}
             )
 
             flash('Favorite location removed successfully!')
